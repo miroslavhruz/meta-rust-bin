@@ -51,10 +51,37 @@ fakeroot do_install() {
     ${S}/install.sh --destdir="${D}" --prefix="${prefix}"
 
     # Install rust standard libraries
-    cd ${WORKDIR}/rust-std
-    for subdir in *; do
-        $subdir/install.sh --destdir="${D}" --prefix="${prefix}"
-    done
+    cd ${WORKDIR}
+
+    # Look for rust-std directories - they might be extracted differently
+    rust_std_found=false
+
+    # Check if rust-std directory exists (old behavior)
+    if [ -d "rust-std" ]; then
+  	  cd rust-std
+  	  for subdir in *; do
+  		  if [ -d "$subdir" ]; then
+  			  $subdir/install.sh --destdir="${D}" --prefix="${prefix}"
+  			  rust_std_found=true
+  		  fi
+  	  done
+  	  cd ..
+    fi
+
+    # If no rust-std directory, look for rust-std-* directories directly
+    if [ "$rust_std_found" = "false" ]; then
+  	  for stddir in rust-std-*; do
+  		  if [ -d "$stddir" ]; then
+  			  $stddir/install.sh --destdir="${D}" --prefix="${prefix}"
+  			  rust_std_found=true
+  		  fi
+  	  done
+    fi
+
+    # If still no rust-std found, warn but continue
+    if [ "$rust_std_found" = "false" ]; then
+  	  bbwarn "No rust-std components found in ${WORKDIR}"
+    fi
 
     # Remove components that will conflict with other installables
     rm -f ${D}${prefix}/lib/rustlib/uninstall.sh
